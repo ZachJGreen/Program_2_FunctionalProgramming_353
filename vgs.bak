@@ -1,0 +1,104 @@
+#lang racket
+
+(define criteria->index
+  (hash "index" 0
+        "rank" 1
+        "name" 2
+        "platform" 3
+        "date" 4
+        "genre" 5
+        "publisher" 6
+        "north_america" 7
+        "europe" 8
+        "japan" 9
+        "rest_of_world" 10
+        "global" 11
+        "review" 12))
+
+(define criteria-options
+  (list "name" "date" "publisher" "region" "genre"))
+
+(define (enumerate lst)
+  (for/list ([item lst] [index (in-naturals)])
+    (cons index item)))
+
+(define (get-criterion-name)
+  (printf "Enter game name: ")
+  (read))
+
+(define (get-criterion-date)
+  (printf "Enter start year: ")
+  (let ((start (read)))
+    (printf "Enter end year: ")
+    (let ((end (read)))
+      (if (> start end) (list end start) (list start end)))))
+
+(define (get-criterion-publisher)
+  (printf "Enter publisher name: ")
+  (read))
+
+(define (choose-region)
+  (printf "Choose region (North America, Europe, Japan, Rest of World, Global): ")
+  (read))
+
+(define (choose-genre)
+  (printf "Enter game genre: ")
+  (read))
+
+(define (get-user-selected-criteria)
+  (let loop ((picked '()))
+    (cond
+      [(= (length picked) 3) picked]
+      [else
+       (printf "Currently selected criteria: ~a\n" (map (lambda (pair) (car pair)) picked))
+       (printf "Select: 1) Name 2) Date 3) Publisher 4) Region 5) Genre\nChoose a criterion by its number or type 'done' to finish: ")
+       (let ((selection (read)))
+         (cond
+           [(equal? selection 'done) picked]
+           [(integer? selection)
+            (case selection
+              [(1) (loop (cons (cons 'name (get-criterion-name)) picked))]
+              [(2) (loop (cons (cons 'date (get-criterion-date)) picked))]
+              [(3) (loop (cons (cons 'publisher (get-criterion-publisher)) picked))]
+              [(4) (loop (cons (cons 'region (choose-region)) picked))]
+              [(5) (loop (cons (cons 'genre (choose-genre)) picked))]
+              [else
+               (printf "Invalid selection, please try again.\n")
+               (loop picked)])]
+           [else
+            (printf "Invalid input, please try again.\n")
+            (loop picked)]))])))
+
+(define (csv-parse filepath)
+  (with-input-from-file filepath
+    (lambda ()
+      (let loop ((lines '()))
+        (let ((line (read-line)))
+          (if (eof-object? line)
+              (reverse lines)
+              (loop (cons (string-split (string-trim line) ",") lines))))))))
+
+(define (load-and-clean-csv filepath selected-criteria)
+  (let* ((raw-data (csv-parse filepath))
+         (headers (first raw-data))
+         (data (rest raw-data)))
+    data))
+
+(define (generate-filtered-list filepath criteria)
+  (let* ((cleaned-data (load-and-clean-csv filepath criteria)))
+    cleaned-data))
+
+(define (main)
+  (let loop ()
+    (printf "Please select up to three criteria from the following options:\n")
+    (let ((user-selected-criteria (get-user-selected-criteria)))
+      (when (not (null? user-selected-criteria))
+        (printf "You selected: ~a\n" (map (lambda (pair) (car pair)) user-selected-criteria))
+        (let ((filtered-list (generate-filtered-list "Video Games Sales.csv" user-selected-criteria)))
+       
+          (printf "Displaying the results based on your criteria:\n")
+          (for-each (lambda (row) (displayln row)) (take filtered-list 5))
+          (printf "Do you want to do another search? (yes/no): ")
+          (when (equal? (read) 'yes) (loop)))))))
+
+(main)
